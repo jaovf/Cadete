@@ -1,6 +1,6 @@
 #include <QTRSensors.h>
 
-/* Não esquecer de arruma no código modular, bom colocar ele no Git depois também
+/* Não esquecer de arrumar no código modular, bom colocar ele no Git depois também
   MOTOR A - DIREITO
     HIGH(1)/LOW(2) - PARA FRENTE
     LOW(1)/HIGH(2) - PARA TRÁS
