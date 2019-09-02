@@ -1,14 +1,5 @@
 #include <QTRSensors.h>
 
-/* Não esquecer de arrumar no código modular, bom colocar ele no Git depois também
-  MOTOR A - DIREITO
-    HIGH(1)/LOW(2) - PARA FRENTE
-    LOW(1)/HIGH(2) - PARA TRÁS
-  MOTOR B - ESQUERDO
-    HIGH(1)/LOW(2) - PARA FRENTE
-    LOW(1)/HIGH(2) - PARA TRÁS
-*/
-
 #define Enable_A   5   //controla o PWM do motor A - motor direito/esquerdo
 #define Motor_A_1  4  //Controlar o sentido de rotação 
 #define Motor_A_2  3
