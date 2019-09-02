@@ -1,15 +1,5 @@
 #include <QTRSensors.h>
 
-/* Não esquecer de arrumar no código modular, bom colocar ele no Git depois também
-  MOTOR A - DIREITO
-    HIGH(1)/LOW(2) - PARA FRENTE
-    LOW(1)/HIGH(2) - PARA TRÁS
-  MOTOR B - ESQUERDO
-    HIGH(1)/LOW(2) - PARA FRENTE
-    LOW(1)/HIGH(2) - PARA TRÁS
-  
- */
-
 #define Enable_A   5   //controla o PWM do motor A - motor direito/esquerdo
 #define Motor_A_1  4  //Controlar o sentido de rotação 
 #define Motor_A_2  3
@@ -17,7 +7,7 @@
 #define Motor_B_1  8
 #define Motor_B_2  7
 #define Sidesensorstart A6
-#define Sidesensorcurve A2   //Ver possibilidade de colocar como digital
+#define Sidesensorcurve A0
 #define Button 12
 #define velocBase 70
 #define velocMin 0
@@ -70,7 +60,9 @@ void setup() {       //Inicialização
 
   //qtr.setTypeAnalog();
   qtr.setTypeRC();
-  qtr.setSensorPins((const uint8_t[]) {A0, A1, A3, A4, A5}, 5);  //5 Sensores
+  qtr.setSensorPins((const uint8_t[]) {
+    A0, A1, A3, A4, A5
+  }, 5);  //5 Sensores
 
   digitalWrite(LED_BUILTIN, HIGH); //Luz ligada para indicar calibragem, dura em torno de 6,4 segundos
 
@@ -85,10 +77,10 @@ void setup() {       //Inicialização
   //CALIBRAGEM AUTOMÁTICA
 
   while (digitalRead(A5) == LOW) {
-    analogWrite(Enable_A, velocCal);   //Set up ir para esquerda
+    analogWrite(Enable_A, velocCal);   //Set up ir para direita, conferir depois
     digitalWrite(Motor_A_1, HIGH);
     digitalWrite(Motor_A_2, LOW);
-    analogWrite(Enable_B, velocCal);  
+    analogWrite(Enable_B, velocCal);   //Set up ir para direita, conferir depois
     digitalWrite(Motor_B_1, LOW);
     digitalWrite(Motor_B_2, HIGH);
     qtr.calibrate();
@@ -102,10 +94,10 @@ void setup() {       //Inicialização
   digitalWrite(Motor_B_2, HIGH);
 
   while (digitalRead(A0) == LOW) {
-    analogWrite(Enable_B, velocCal);   //Set up ir para direita
+    analogWrite(Enable_B, velocCal);   //Set up ir para direita, conferir depois
     digitalWrite(Motor_B_1, HIGH);
     digitalWrite(Motor_B_2, LOW);
-    analogWrite(Enable_A, velocCal);   
+    analogWrite(Enable_A, velocCal);   //Set up ir para direita, conferir depois
     digitalWrite(Motor_A_1, LOW);
     digitalWrite(Motor_A_2, HIGH);
     qtr.calibrate();
@@ -119,10 +111,10 @@ void setup() {       //Inicialização
   digitalWrite(Motor_B_2, HIGH);
 
   while (digitalRead(A1) == LOW) {
-    analogWrite(Enable_A, velocCal);   //Set up ir para esquerda
+    analogWrite(Enable_A, velocCal);   //Set up ir para direita, conferir depois
     digitalWrite(Motor_A_1, HIGH);
     digitalWrite(Motor_A_2, LOW);
-    analogWrite(Enable_B, velocCal);   
+    analogWrite(Enable_B, velocCal);   //Set up ir para direita, conferir depois
     digitalWrite(Motor_B_1, LOW);
     digitalWrite(Motor_B_2, HIGH);
     qtr.calibrate();
@@ -311,9 +303,8 @@ void loop() {
       //velocEsq = k*velocEsq;
     }
 
-    analogWrite(Enable_A, abs(velocDir));  //Velocs de acordo com o sentido testado
-    //Será que por estarem trocados que a conta do Gonza n funfou?
-    analogWrite(Enable_B, abs(velocEsq));
+    analogWrite(Enable_A, abs(velocEsq));
+    analogWrite(Enable_B, abs(velocDir));
 
     //    //Proteger motores - inicio
     //    if (velocEsq > velocMax) {
