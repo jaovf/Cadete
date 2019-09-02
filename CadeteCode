@@ -1,0 +1,348 @@
+#include <QTRSensors.h>
+
+#define Enable_A   5   //controla o PWM do motor A - motor direito/esquerdo
+#define Motor_A_1  4  //Controlar o sentido de rotação 
+#define Motor_A_2  3
+#define Enable_B   9  //controla o PWM do motor B - motor direito/esquerdo
+#define Motor_B_1  8
+#define Motor_B_2  7
+#define Sidesensorstart A6
+#define Sidesensorcurve A0
+#define Button 12
+#define velocBase 70
+#define velocMin 0
+#define velocMax 160
+#define velocCal 70
+#define MEDIO 2000 //valor médio que deve ser conferido na leitura dos sensores na pista e que será usado no PID
+
+QTRSensors qtr;
+
+unsigned int sensorValues[5];
+uint16_t position;
+int erro = 0;
+double Kp = 0.06;
+double Kd = 0.045;
+
+double P = 0, D = 0, I = 0;
+int velocEsq;     //Velocidade calculada pelo PID que irão para os Enables(PWM)
+int velocDir;     //Velocidade calculada pelo PID que irão para os Enables(PWM)
+int anterior = 0;
+int c = 0;
+int fitaStart = 0;
+int fitaCurve = 0;
+int ajuste = 0;
+boolean flagStart = LOW;
+boolean flagCurve = LOW;
+unsigned int PWMData[50];
+int PWMAvg = velocBase;
+int i;
+int lap = 1;
+float k = 0;
+
+
+void setup() {       //Inicialização
+  pinMode(Enable_A, OUTPUT);
+  pinMode(Motor_A_1, OUTPUT);
+  pinMode(Motor_A_2, OUTPUT);
+  pinMode(Enable_B, OUTPUT);
+  pinMode(Motor_B_1, OUTPUT);
+  pinMode(Motor_B_2, OUTPUT);
+  pinMode(Sidesensorstart, INPUT);
+  pinMode(Sidesensorcurve, INPUT);
+  pinMode(Button, INPUT);
+
+  analogWrite(Enable_A, 0);    //Desativando motores por precaução
+  analogWrite(Enable_A, 0);
+  digitalWrite(Motor_A_1, HIGH);
+  digitalWrite(Motor_A_2, HIGH);
+  digitalWrite(Motor_B_1, HIGH);
+  digitalWrite(Motor_B_2, HIGH);
+
+  //qtr.setTypeAnalog();
+  qtr.setTypeRC();
+  qtr.setSensorPins((const uint8_t[]) {A0, A1, A3, A4, A5}, 5);  //5 Sensores
+
+  digitalWrite(LED_BUILTIN, HIGH); //Luz ligada para indicar calibragem, dura em torno de 6,4 segundos
+
+  //CALIBRAGEM MANUAL
+
+//  for (uint16_t i = 0; i < 200; i++)
+//    {
+//    qtr.calibrate();
+//    delay(2);
+//    }
+
+  //CALIBRAGEM AUTOMÁTICA
+
+  while (digitalRead(A5) == LOW) {
+    analogWrite(Enable_A, velocCal);   //Set up ir para direita, conferir depois
+    digitalWrite(Motor_A_1, HIGH);
+    digitalWrite(Motor_A_2, LOW);
+    analogWrite(Enable_B, velocCal);   //Set up ir para direita, conferir depois
+    digitalWrite(Motor_B_1, LOW);
+    digitalWrite(Motor_B_2, HIGH);
+    qtr.calibrate();
+  } 
+
+  analogWrite(Enable_A, 0);    //Desativando motores por precaução
+  analogWrite(Enable_B, 0);
+  digitalWrite(Motor_A_1, HIGH);
+  digitalWrite(Motor_A_2, HIGH);
+  digitalWrite(Motor_B_1, HIGH);
+  digitalWrite(Motor_B_2, HIGH);
+
+  while (digitalRead(A0) == LOW) {
+    analogWrite(Enable_B, velocCal);   //Set up ir para direita, conferir depois
+    digitalWrite(Motor_B_1, HIGH);
+    digitalWrite(Motor_B_2, LOW);
+    analogWrite(Enable_A, velocCal);   //Set up ir para direita, conferir depois
+    digitalWrite(Motor_A_1, LOW);
+    digitalWrite(Motor_A_2, HIGH);
+    qtr.calibrate();
+  } 
+  
+  analogWrite(Enable_A, 0);    //Desativando motores por precaução
+  analogWrite(Enable_B, 0);
+  digitalWrite(Motor_A_1, HIGH);
+  digitalWrite(Motor_A_2, HIGH);
+  digitalWrite(Motor_B_1, HIGH);
+  digitalWrite(Motor_B_2, HIGH);
+
+  while (digitalRead(A1) == LOW) {
+    analogWrite(Enable_A, velocCal);   //Set up ir para direita, conferir depois
+    digitalWrite(Motor_A_1, HIGH);
+    digitalWrite(Motor_A_2, LOW);
+    analogWrite(Enable_B, velocCal);   //Set up ir para direita, conferir depois
+    digitalWrite(Motor_B_1, LOW);
+    digitalWrite(Motor_B_2, HIGH);
+    qtr.calibrate();
+  } 
+
+  analogWrite(Enable_A, 0);    //Desativando motores por precaução
+  analogWrite(Enable_B, 0);
+  digitalWrite(Motor_A_1, HIGH);
+  digitalWrite(Motor_A_2, HIGH);
+  digitalWrite(Motor_B_1, HIGH);
+  digitalWrite(Motor_B_2, HIGH);
+
+  
+
+  /*for (int i = 0; i < 48; i++) // calibra os sensores
+    {
+    if ( i  < 12 )
+    {
+      analogWrite(Enable_A, velocCal);   //Set up ir para direita, conferir depois
+      digitalWrite(Motor_A_1, HIGH);
+      digitalWrite(Motor_A_2, LOW);
+    }
+    else if (i > 12 || i < 24)
+    {
+      analogWrite(Enable_B, velocCal);   //Set up ir para direita, conferir depois
+      digitalWrite(Motor_B_1, HIGH);
+      digitalWrite(Motor_B_2, LOW);
+    }
+    else if (i > 24 || i < 36)
+    {
+      analogWrite(Enable_A, velocCal);   //Set up ir para direita, conferir depois
+      digitalWrite(Motor_A_1, LOW);
+      digitalWrite(Motor_A_2, HIGH);
+    }
+    else if (i > 36 || i < 48)
+    {
+      analogWrite(Enable_B, velocCal);   //Set up ir para direita, conferir depois
+      digitalWrite(Motor_B_1, LOW);
+      digitalWrite(Motor_B_2, HIGH);
+    }
+    if (i == 12 || i == 36 || i == 24 || i == 48) {
+      analogWrite(Enable_A, 0);    //Desativando motores por precaução
+      analogWrite(Enable_A, 0);
+      digitalWrite(Motor_A_1, HIGH);
+      digitalWrite(Motor_A_2, HIGH);
+      digitalWrite(Motor_B_1, HIGH);
+      digitalWrite(Motor_B_2, HIGH);
+    }*/
+  //        qtr.calibrate();
+  //        delay(2);
+
+
+  Serial.begin(9600);
+  
+  digitalWrite(LED_BUILTIN, LOW); //Luz desligada, acabou a calibragem
+}
+
+
+
+void loop() {
+  //if (lap > 3) c = 0;
+
+  if ( c != 1 ) {
+    if (digitalRead(Button) == HIGH) {       //Espera o botão ser acionado e 2s depois começa a seguir a linha
+      delay(1000);
+      c = 1;
+      analogWrite(Enable_A, velocBase);        //Ativando motores
+      analogWrite(Enable_B, velocBase);
+      digitalWrite(Motor_A_1, HIGH);
+      digitalWrite(Motor_A_2, LOW);
+      digitalWrite(Motor_B_1, HIGH);
+      digitalWrite(Motor_B_2, LOW);
+    }
+  }
+  else if ( c == 1 ) {                       //Programa do seguidor começa após botão ser acionado
+    /*if (digitalRead(Sidesensorstart) == HIGH){            // Contagem de fitas start
+      if (digitalRead(Sidesensorcurve) == LOW){           // Evita que se conte fitas em cruzamentos
+        delay (10);                         // Dupla checagem para refinar os dados
+        if (digitalRead(Sidesensorstart) == HIGH){
+          if (digitalRead(Sidesensorcurve) == LOW){
+            if (flagStart == LOW){
+              fitaStart++;
+              flagStart = HIGH;
+            }
+          }
+        }
+      }
+      }
+      else (flagStart = LOW);                 // Reseta a fitaStart
+
+      if (digitalRead(Sidesensorcurve) == HIGH){           // Contagem de fitas curve
+        if (digitalRead(Sidesensorstart) == LOW){        // Evita que se conte fitas em cruzamentos
+            delay (10);
+            if (digitalRead(Sidesensorcurve) == HIGH){   // Dupla checagem para refinar os dados
+                if (digitalRead(Sidesensorstart) == LOW){
+                    if (flagCurve == LOW){
+                        fitaCurve++;
+                        flagCurve = HIGH;
+                        i = 1;                  //Reseta variável do PWMAvg
+                        PWMData[fitaCurve-1] = PWMAvg;
+                    }
+                }
+            }
+        }
+      }
+      else (flagCurve = LOW);
+
+      if (fitaStart%2 == 0 && fitaStart != 0){   //Checagem fitaStart para parar
+      delay(500);                              //Espera o robô passar por completo
+      lap++;                                   //Conta as voltas
+      analogWrite(Enable_A, 0);                //Desativa motores
+      analogWrite(Enable_A, 0);
+      digitalWrite(Motor_A_1, HIGH);
+      digitalWrite(Motor_A_2, HIGH);
+      digitalWrite(Motor_B_1, HIGH);
+      digitalWrite(Motor_B_2, HIGH);
+      digitalWrite(LED_BUILTIN, HIGH);         //Luz ligada indicando que parou
+      delay(12000);                            //Espera o tempo mínimo para recomeçar a volta
+      digitalWrite(LED_BUILTIN, LOW);          //Luz desligada indicando que reiniciou
+      }
+
+      //Análise de percurso - inicio
+      PWMAvg = (PWMAvg*(i-1) + ajuste)/i;       //Faz a media do PWM q é passado no intervalo de fitas
+      i++;
+      //Análise de percurso - fim
+
+      //PD - inicio
+      position = qtr.readLineBlack(sensorValues);
+      erro = position - MEDIO;                   //Cálculo do erro que será usado no controle PD
+      if (lap == 1){
+        P = erro;
+        D = (erro - anterior) * 0.1 + D * 0.9;
+        ajuste = (Kp * P) + (Kd * D);
+        velocEsq = velocBase - ajuste;
+        velocDir = velocBase + ajuste;
+      }else if(lap == 2){
+        P = erro;
+        D = (erro - anterior) * 0.1 + D * 0.9;
+        ajuste = ((Kp * P) + (Kd * D)) * 0.5 + (ajuste - PWMData[fitaCurve]) * 0.5;     //Implementação do machine learning
+        velocEsq = velocBase - ajuste;
+        velocDir = velocBase + ajuste;
+      }else if(lap == 3){
+        P = erro;
+        D = (erro - anterior) * 0.1 + D * 0.9;
+        ajuste = ((Kp * P) + (Kd * D)) * 0.2 + (ajuste - PWMData[fitaCurve]) * 0.8;     //Implementação do machine learning
+        velocEsq = velocBase - ajuste;
+        velocDir = velocBase + ajuste;
+      }*/
+    //PD - fim
+    //Análise de percurso - fim
+
+    //position = (digitalRead(A0)*0+digitalRead(A1)*1000+digitalRead(A3)*2000+digitalRead(A4)*3000+digitalRead(A5)*4000)/(digitalRead(A0)+digitalRead(A1)+digitalRead(A3)+digitalRead(A4)+digitalRead(A5));
+    position = qtr.readLineBlack(sensorValues);
+    erro = position - MEDIO;                   //Cálculo do erro que será usado no controle PD
+    P = erro;
+    D = (erro - anterior) * 0.1 + D * 0.9;
+    anterior = erro;
+    ajuste = (Kp * P) + (Kd * D);
+    velocEsq = velocBase - ajuste;
+    velocDir = velocBase + ajuste;
+
+    if ( velocEsq > 0) {           //Ter certeza que as velocidades estão no limite do PWM
+      digitalWrite(Motor_A_1, HIGH);
+      digitalWrite(Motor_A_2, LOW);
+    }
+    if ( velocDir > 0) {
+      digitalWrite(Motor_B_1, HIGH);
+      digitalWrite(Motor_B_2, LOW);
+    }
+    if ( velocEsq < 0) {
+      digitalWrite(Motor_A_1, LOW);
+      digitalWrite(Motor_A_2, HIGH);
+    }
+    if ( velocDir < 0) {
+      digitalWrite(Motor_B_1, LOW);
+      digitalWrite(Motor_B_2, HIGH);
+    }
+    if ( abs(velocEsq) > velocMax ) {
+      //k = velocMax/velocEsq;
+      velocEsq = velocMax;
+      //velocDir = k*velocDir;
+    }
+    if ( abs(velocDir) > velocMax ) {
+      //k = velocMax/velocDir;
+      velocDir = velocMax;
+      //velocEsq = k*velocEsq;
+    }
+
+    analogWrite(Enable_A, abs(velocEsq));
+    analogWrite(Enable_B, abs(velocDir));
+
+    //    //Proteger motores - inicio
+    //    if (velocEsq > velocMax) {
+    //      k = velocMax/velocEsq;
+    //      velocEsq = velocMax;
+    //      //velocDir = k*velocDir;
+    //    }
+    //    if (velocDir > velocMax) {
+    //      k = velocMax/velocDir;
+    //      velocDir = velocMax;
+    //      //velocEsq = k*velocEsq;
+    //    }
+    //    if (velocEsq < 0) velocEsq = 0;
+    //    if (velocDir < 0) velocDir = 0;
+    //    //Proteger motores - fim
+    //
+    //    analogWrite(Enable_A, velocEsq);
+    //    analogWrite(Enable_B, velocDir);
+
+
+    // delay(1);
+
+    //    Serial.print(velocEsq);
+    //    Serial.print(" ");
+    //    Serial.print(velocDir);
+    //    Serial.print(" ");
+    //    Serial.print(P);
+    //    Serial.print(" ");
+    //    Serial.println(ajuste);
+    //    Serial.println(position);
+//        Serial.print(digitalRead(A0));
+//        Serial.print(" ");
+//        Serial.print(digitalRead(A1));
+//        Serial.print(" ");
+//        Serial.print(digitalRead(A3));
+//        Serial.print(" ");
+//        Serial.print(digitalRead(A4));
+//        Serial.print(" ");
+//        Serial.println(digitalRead(A5));
+//        delay(200);
+  }
+
+}
